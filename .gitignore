@@ -1,0 +1,7 @@
+# Local secrets for `wrangler pages dev` (holds WHATSAPP_NUMBER). Never commit.
+.dev.vars
+.dev.vars.*
+
+# Wrangler / Node working files
+.wrangler/
+node_modules/
