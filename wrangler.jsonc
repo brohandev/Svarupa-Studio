@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   // Must match the Worker's name in the Cloudflare dashboard exactly, or Workers Builds will refuse to deploy.
-  "name": "svarupa-studio.rohan-returns.workers.dev",
+  "name": "svarupa-studio",
   "main": "worker/index.js",
   "compatibility_date": "2026-10-01",
   "assets": {
