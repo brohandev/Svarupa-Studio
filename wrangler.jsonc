@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Must match the Worker's name in the Cloudflare dashboard exactly, or Workers Builds will refuse to deploy.
+  "name": "svarupa-studio.rohan-returns.workers.dev",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    // The site is served straight from the repository root; .assetsignore keeps non-site files from being published.
+    "directory": ".",
+    "binding": "ASSETS"
+  }
+  // WHATSAPP_NUMBER is a secret set in the dashboard (or .dev.vars locally). Never add it here.
+}

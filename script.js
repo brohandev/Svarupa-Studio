@@ -1,5 +1,5 @@
 // EDITING NOTE: The WhatsApp number is not stored in this repository. It lives in the WHATSAPP_NUMBER secret on the
-// Cloudflare Pages project and is used by functions/whatsapp.js.
+// Cloudflare Worker and is used by worker/index.js.
 
 const menuButton = document.querySelector(".menu-toggle");
 const nav = document.querySelector(".site-nav");
@@ -136,7 +136,7 @@ document.querySelector("#enquire")?.addEventListener("submit", (event) => {
     "I understand that fulfilment is currently limited to Singapore.",
   ].filter(Boolean).join("\n");
 
-  // Hand the message to the /whatsapp Pages Function via the footer's WhatsApp form; the number never reaches the page.
+  // Hand the message to the /whatsapp Worker route via the footer's WhatsApp form; the number never reaches the page.
   const whatsappForm = document.querySelector("#whatsapp-form");
   whatsappForm.elements.text.value = message;
   whatsappForm.submit();
