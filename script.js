@@ -73,9 +73,9 @@ menuButton?.addEventListener("click", () => {
 
 nav?.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeMenu));
 
-// Fades each artwork row and the artist lead up into view as they scroll onto the screen.
-// Cards in the same row enter together, so each row rises as one.
-const revealTargets = document.querySelectorAll(".art-card, .artist-lead");
+// Fades each artwork row and the whole artist column (eyebrow, heading, lead, paragraph, link) up into view as they
+// scroll onto the screen. Cards in the same row enter together, so each row rises as one.
+const revealTargets = document.querySelectorAll(".art-card, .artist-copy > *");
 if ("IntersectionObserver" in window) {
   document.documentElement.classList.add("has-reveal");
   const revealObserver = new IntersectionObserver((entries) => {

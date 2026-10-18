@@ -253,6 +253,11 @@ main > section:nth-child(4) { z-index: 4; }
    Without the script, everything simply shows. */
 .reveal { transition: opacity 1.2s cubic-bezier(.22, 1, .36, 1), transform 1.2s cubic-bezier(.22, 1, .36, 1); }
 .has-reveal .reveal:not(.is-visible) { opacity: 0; transform: translateY(40px); }
+/* The artist column cascades top to bottom (eyebrow, heading, lead, paragraph, link) when it comes into view. */
+.artist-copy > .reveal:nth-child(2) { transition-delay: .15s; }
+.artist-copy > .reveal:nth-child(3) { transition-delay: .3s; }
+.artist-copy > .reveal:nth-child(4) { transition-delay: .45s; }
+.artist-copy > .reveal:nth-child(5) { transition-delay: .6s; }
 
 @media (max-width: 1050px) {
   .site-header { grid-template-columns: 1fr auto; }
