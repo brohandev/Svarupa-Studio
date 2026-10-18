@@ -1,4 +1,4 @@
-# Local secrets for `wrangler pages dev` (holds WHATSAPP_NUMBER). Never commit.
+# Local secrets for `wrangler dev` (ARTIST_EMAIL, SENDER_EMAIL, Turnstile keys). Never commit.
 .dev.vars
 .dev.vars.*
 

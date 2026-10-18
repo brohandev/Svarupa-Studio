@@ -227,14 +227,24 @@ main > section:nth-child(4) { z-index: 4; }
 .button-dark { grid-column: 1 / -1; width: 100%; margin-top: 6px; background: var(--ink); color: var(--ivory); }
 .button-dark:hover { background: var(--burgundy); }
 .form-note { grid-column: 1 / -1; margin: -14px 0 0; text-align: center; font-size: .75rem; color: #72695f; }
+.field-hint { margin: 6px 0 0; font-size: .72rem; color: #72695f; }
+.field.is-invalid input, .field.is-invalid select { border-bottom-color: #a3392f; box-shadow: 0 1px 0 #a3392f; }
+/* Honeypot: kept in the form for bots but moved off-screen and out of reach for people and screen readers. */
+.field-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.turnstile-slot:empty { display: none; }
+.form-status { margin: 0; padding: 12px 14px; border-left: 2px solid #a3392f; background: rgba(163, 57, 47, .08); color: #7d2a22; font-size: .85rem; }
+.form-submit[disabled] { opacity: .65; cursor: progress; }
+.enquiry-sent { align-self: start; padding: 44px; background: var(--ivory); color: var(--ink); outline: none; }
+.enquiry-sent p { margin: 0; }
+.enquiry-sent .eyebrow { margin-bottom: 14px; color: #8b4d35; }
+.enquiry-sent-title { margin-bottom: 14px !important; font-family: var(--fraunces); font-size: clamp(2rem, 3.2vw, 2.8rem); line-height: 1.05; }
+.enquiry-sent p:last-child { color: #544e47; font-family: var(--serif); font-size: 1.05rem; }
 
-.site-footer { padding: 55px var(--page-gutter); display: grid; grid-template-columns: 1.2fr 1fr auto; gap: 30px; align-items: end; background: var(--green-deep); color: rgba(244,239,230,.7); border-top: 1px solid var(--line-light); font-size: .78rem; }
+.site-footer { padding: 55px var(--page-gutter); display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; align-items: end; background: var(--green-deep); color: rgba(244,239,230,.7); border-top: 1px solid var(--line-light); font-size: .78rem; }
 .footer-brand { display: flex; flex-direction: column; }
 .footer-brand span:first-child { font-family: var(--display); font-size: 1.45rem; letter-spacing: 0; color: var(--ivory); }
 .footer-brand span:last-child { text-transform: uppercase; letter-spacing: .1em; }
 .site-footer p { margin: 0; }
-.footer-whatsapp { margin: 0; }
-.footer-whatsapp button { padding: 0; border: 0; border-bottom: 1px solid currentColor; background: transparent; color: #efaa7b; font: inherit; cursor: pointer; }
 .copyright { grid-column: 1 / -1; padding-top: 24px; margin-top: 5px !important; border-top: 1px solid var(--line-light); }
 
 :focus-visible { outline: 2px solid var(--saffron); outline-offset: 4px; }
@@ -286,7 +296,8 @@ main > section:nth-child(4) { z-index: 4; }
   .artist-mark { justify-self: center; max-width: 440px; }
   .artist-lead { margin-top: 32px; }
   .commissions { padding-top: 90px; padding-bottom: 90px; gap: 60px; }
-  .enquiry-form { grid-template-columns: 1fr; padding: 28px 22px; }
+  .enquiry-form, .enquiry-sent { padding: 28px 22px; }
+  .enquiry-form { grid-template-columns: 1fr; }
   .field, .field-full { grid-column: 1; }
   .site-footer { grid-template-columns: 1fr; align-items: start; }
   .copyright { grid-column: 1; }

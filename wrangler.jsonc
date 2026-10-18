@@ -8,6 +8,10 @@
     // The site is served straight from the repository root; .assetsignore keeps non-site files from being published.
     "directory": ".",
     "binding": "ASSETS"
-  }
-  // WHATSAPP_NUMBER is a secret set in the dashboard (or .dev.vars locally). Never add it here.
+  },
+  // Sends commission enquiries through Cloudflare Email Routing. No destination is fixed here so the artist's
+  // address stays out of the repository; it comes from the ARTIST_EMAIL secret and must be a verified destination.
+  "send_email": [{ "name": "SEND_EMAIL" }]
+  // ARTIST_EMAIL, SENDER_EMAIL, TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY are secrets set in the dashboard
+  // (or .dev.vars locally). Never add them here.
 }

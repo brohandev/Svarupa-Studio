@@ -1,45 +1,188 @@
 // Cloudflare Worker for Svarupa Studio.
 //
 // The site itself is served as static assets (see wrangler.jsonc). This script only runs for requests that don't
-// match a static file, which is how /whatsapp reaches it.
+// match a static file, which is how the /api/ routes reach it:
 //
-// /whatsapp keeps the studio's WhatsApp number out of the repository and the page source: the site posts its
-// message here, and the Worker redirects the visitor to WhatsApp using the number stored in the WHATSAPP_NUMBER
-// secret (Cloudflare dashboard > Workers & Pages > this Worker > Settings > Variables and Secrets, type "Secret").
-// For local testing with `npx wrangler dev`, put WHATSAPP_NUMBER=... in a .dev.vars file (git-ignored).
+//   GET  /api/turnstile-config  -> the public Turnstile site key, so the page can render the human check.
+//   POST /api/enquiry           -> verifies Turnstile, validates the commission form, and emails it to the artist
+//                                  through Cloudflare Email Routing.
 //
-// Only POST is answered, so crawlers that follow ordinary links never receive the redirect.
+// Settings (Cloudflare dashboard > Workers & Pages > this Worker > Settings > Variables and Secrets, type "Secret";
+// for local testing with `npx wrangler dev`, put them in a git-ignored .dev.vars file):
+//   ARTIST_EMAIL          where enquiries are delivered; must be a verified Email Routing destination address.
+//   SENDER_EMAIL          the From address, e.g. enquiries@yourdomain.com; must be on the domain using Email Routing.
+//   TURNSTILE_SITE_KEY    public key of the Turnstile widget.
+//   TURNSTILE_SECRET_KEY  secret key of the same widget.
 
-const MAX_MESSAGE_LENGTH = 2000;
+import { EmailMessage } from "cloudflare:email";
 
-async function handleWhatsApp(request, env) {
+const LIMITS = { name: 100, email: 254, phone: 30, subject: 200, dimensions: 60, medium: 60, budget: 60, notes: 2000 };
+const EMAIL_PATTERN = /^[^\s@<>()",;]+@[^\s@<>()",;]+\.[^\s@<>()",;]+$/;
+
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
+  });
+}
+
+function field(form, name) {
+  return String(form.get(name) || "").trim();
+}
+
+// Collapses line breaks and runs of whitespace; used for single-line values so they can't inject email headers.
+function singleLine(value) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function validateEnquiry(form) {
+  const enquiry = {
+    name: singleLine(field(form, "name")),
+    email: singleLine(field(form, "email")),
+    phone: singleLine(field(form, "phone")),
+    subject: singleLine(field(form, "subject")),
+    dimensions: singleLine(field(form, "dimensions")),
+    medium: singleLine(field(form, "medium")),
+    budget: singleLine(field(form, "budget")),
+    notes: field(form, "notes").replace(/\r\n?/g, "\n"),
+  };
+
+  for (const required of ["name", "phone", "subject", "dimensions", "medium", "budget"]) {
+    if (!enquiry[required]) return { error: "Please fill in every required field." };
+  }
+  for (const [key, max] of Object.entries(LIMITS)) {
+    if (enquiry[key].length > max) return { error: "One of the fields is too long. Please shorten it and try again." };
+  }
+
+  const phoneDigits = enquiry.phone.replace(/\D/g, "");
+  if (!/^\+[\d\s\-().]+$/.test(enquiry.phone) || phoneDigits.length < 8 || phoneDigits.length > 15) {
+    return { error: "Please enter your phone number with its country code, for example +65 8123 4567." };
+  }
+  if (enquiry.email && !EMAIL_PATTERN.test(enquiry.email)) {
+    return { error: "Please check your email address, or leave it blank." };
+  }
+  return { enquiry };
+}
+
+async function verifyTurnstile(token, request, env) {
+  if (!token) return false;
+  const body = new FormData();
+  body.set("secret", env.TURNSTILE_SECRET_KEY);
+  body.set("response", token);
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (ip) body.set("remoteip", ip);
+  const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body });
+  const outcome = await result.json().catch(() => ({}));
+  return outcome.success === true;
+}
+
+// --- Plain-text email (RFC 5322) -------------------------------------------------------------------------------
+
+function base64Utf8(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
+// Header values may contain non-ASCII text (e.g. names with accents), so they are sent as encoded words.
+function encodeHeader(text) {
+  return /^[\x20-\x7e]*$/.test(text) ? text : `=?UTF-8?B?${base64Utf8(text)}?=`;
+}
+
+function buildEmail({ from, to, replyTo, subject, text }) {
+  const domain = from.split("@")[1];
+  const headers = [
+    `From: ${encodeHeader("Svarupa Studio website")} <${from}>`,
+    `To: <${to}>`,
+    replyTo ? `Reply-To: <${replyTo}>` : null,
+    `Subject: ${encodeHeader(subject)}`,
+    `Date: ${new Date().toUTCString().replace("GMT", "+0000")}`,
+    `Message-ID: <${crypto.randomUUID()}@${domain}>`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+  ].filter(Boolean);
+  const body = base64Utf8(text.replace(/\r?\n/g, "\r\n")).replace(/.{1,76}/g, "$&\r\n");
+  return `${headers.join("\r\n")}\r\n\r\n${body}`;
+}
+
+function enquiryText(enquiry) {
+  const sentAt = new Date().toLocaleString("en-SG", { timeZone: "Asia/Singapore", dateStyle: "full", timeStyle: "short" });
+  return [
+    "New commission enquiry from the Svarupa Studio website.",
+    "",
+    `Name: ${enquiry.name}`,
+    `Phone: ${enquiry.phone}`,
+    `Email: ${enquiry.email || "Not provided"}`,
+    "",
+    `Subject: ${enquiry.subject}`,
+    `Approximate dimensions: ${enquiry.dimensions}`,
+    `Preferred medium: ${enquiry.medium}`,
+    `Budget: ${enquiry.budget}`,
+    "",
+    "What draws them to this story:",
+    enquiry.notes || "(No notes given)",
+    "",
+    "The buyer has acknowledged that fulfilment is currently limited to Singapore.",
+    `Sent ${sentAt} (Singapore time).`,
+    enquiry.email ? "Reply to this email to answer the buyer directly." : "The buyer did not give an email address; please reply by phone.",
+  ].join("\n");
+}
+
+// --- Routes ----------------------------------------------------------------------------------------------------
+
+async function handleEnquiry(request, env) {
   if (request.method !== "POST") {
     return new Response("Method not allowed", { status: 405, headers: { Allow: "POST" } });
   }
-
-  const number = String(env.WHATSAPP_NUMBER || "").replace(/\D/g, "");
-  if (!/^\d{8,15}$/.test(number)) {
-    return new Response("WhatsApp contact is not configured.", { status: 500 });
+  if (!env.ARTIST_EMAIL || !env.SENDER_EMAIL || !env.TURNSTILE_SECRET_KEY || !env.SEND_EMAIL) {
+    return json({ ok: false, error: "Enquiries are temporarily unavailable. Please try again later." }, 503);
   }
 
-  const form = await request.formData();
-  const text = String(form.get("text") || "").slice(0, MAX_MESSAGE_LENGTH);
-  const query = text ? `?text=${encodeURIComponent(text)}` : "";
+  let form;
+  try {
+    form = await request.formData();
+  } catch {
+    return json({ ok: false, error: "Something went wrong reading your enquiry. Please try again." }, 400);
+  }
 
-  return new Response(null, {
-    status: 303,
-    headers: {
-      Location: `https://wa.me/${number}${query}`,
-      "Cache-Control": "no-store",
-      "X-Robots-Tag": "noindex",
-    },
+  // Honeypot: the "company" field is hidden from people, so only bots fill it in. Pretend success and send nothing.
+  if (field(form, "company")) return json({ ok: true });
+
+  if (!(await verifyTurnstile(field(form, "cf-turnstile-response"), request, env))) {
+    return json({ ok: false, error: "We couldn't confirm you're not a robot. Please complete the check and try again." }, 403);
+  }
+
+  const { enquiry, error } = validateEnquiry(form);
+  if (error) return json({ ok: false, error }, 400);
+
+  const raw = buildEmail({
+    from: env.SENDER_EMAIL,
+    to: env.ARTIST_EMAIL,
+    replyTo: enquiry.email,
+    subject: `Commission enquiry: ${enquiry.subject} (${enquiry.name})`,
+    text: enquiryText(enquiry),
   });
+
+  try {
+    await env.SEND_EMAIL.send(new EmailMessage(env.SENDER_EMAIL, env.ARTIST_EMAIL, raw));
+  } catch (sendError) {
+    console.error("Enquiry email failed:", sendError);
+    return json({ ok: false, error: "Your enquiry couldn't be sent just now. Please try again in a few minutes." }, 502);
+  }
+  return json({ ok: true });
+}
+
+function handleTurnstileConfig(env) {
+  return json({ siteKey: env.TURNSTILE_SITE_KEY || null });
 }
 
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
-    if (pathname === "/whatsapp") return handleWhatsApp(request, env);
+    if (pathname === "/api/enquiry") return handleEnquiry(request, env);
+    if (pathname === "/api/turnstile-config") return handleTurnstileConfig(env);
     return env.ASSETS.fetch(request);
   },
 };

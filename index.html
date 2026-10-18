@@ -191,14 +191,29 @@
           </dl>
         </div>
 
-        <form class="enquiry-form" id="enquire">
+        <!-- Sent by script.js to the /api/enquiry Worker route (worker/index.js), which emails it to the artist. -->
+        <form class="enquiry-form" id="enquire" novalidate>
           <div class="field field-full">
             <label for="name">Your name</label>
-            <input id="name" name="name" type="text" autocomplete="name" required placeholder="Name" />
+            <input id="name" name="name" type="text" autocomplete="name" required maxlength="100" placeholder="Name" />
+          </div>
+          <div class="field">
+            <label for="phone">Phone number</label>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" required maxlength="30" pattern="\+[0-9][0-9\s\-\(\)\.]{6,28}" placeholder="+65 8123 4567" aria-describedby="phone-hint" />
+            <p class="field-hint" id="phone-hint">Include your country code, e.g. +65.</p>
+          </div>
+          <div class="field">
+            <label for="email">Email <span>(optional)</span></label>
+            <input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" />
+          </div>
+          <!-- Honeypot: hidden from people; bots that fill it in are silently ignored. -->
+          <div class="field-trap" aria-hidden="true">
+            <label for="company">Company</label>
+            <input id="company" name="company" type="text" tabindex="-1" autocomplete="off" />
           </div>
           <div class="field field-full">
             <label for="subject">Subject</label>
-            <input id="subject" name="subject" type="text" required placeholder="A scene, figure or teaching" />
+            <input id="subject" name="subject" type="text" required maxlength="200" placeholder="A scene, figure or teaching" />
           </div>
           <div class="field">
             <label for="dimensions">Approximate dimensions</label>
@@ -233,11 +248,18 @@
           </div>
           <div class="field field-full">
             <label for="notes">What draws you to this story? <span>(optional)</span></label>
-            <textarea id="notes" name="notes" rows="3" placeholder="Share any colours, mood or context you have in mind"></textarea>
+            <textarea id="notes" name="notes" rows="3" maxlength="2000" placeholder="Share any colours, mood or context you have in mind"></textarea>
           </div>
-          <button class="button button-dark form-submit" type="submit">Continue on WhatsApp</button>
-          <p class="form-note">Your enquiry will open in WhatsApp for review before sending.</p>
+          <div class="turnstile-slot field-full" data-turnstile></div>
+          <p class="form-status field-full" data-form-status role="alert" hidden></p>
+          <button class="button button-dark form-submit" type="submit">Send enquiry</button>
+          <p class="form-note">Your enquiry goes privately to the artist, who will reply by phone or email.</p>
         </form>
+        <div class="enquiry-sent" data-enquiry-sent tabindex="-1" hidden>
+          <p class="eyebrow">Enquiry sent</p>
+          <p class="enquiry-sent-title">Thank you.</p>
+          <p>Your enquiry is with the artist, who will be in touch by phone or email to begin the conversation.</p>
+        </div>
       </section>
     </main>
 
@@ -247,11 +269,6 @@
         <span>Art by Ruma Dev</span>
       </div>
       <p>Original works and private commissions · Singapore</p>
-      <!-- WhatsApp hand-off: posts to the /whatsapp Worker route (worker/index.js), which holds the number. -->
-      <form class="footer-whatsapp" id="whatsapp-form" method="post" action="./whatsapp" target="_blank" rel="noopener noreferrer">
-        <input type="hidden" name="text" value="" />
-        <button type="submit">WhatsApp</button>
-      </form>
       <p class="copyright">© <span data-year></span> Svarupa Studio</p>
     </footer>
   </body>

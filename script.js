@@ -1,6 +1,3 @@
-// EDITING NOTE: The WhatsApp number is not stored in this repository. It lives in the WHATSAPP_NUMBER secret on the
-// Cloudflare Worker and is used by worker/index.js.
-
 const menuButton = document.querySelector(".menu-toggle");
 const nav = document.querySelector(".site-nav");
 const header = document.querySelector("[data-header]");
@@ -120,27 +117,106 @@ document.querySelectorAll(".art-enquire").forEach((button) => {
   });
 });
 
-document.querySelector("#enquire")?.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const data = new FormData(event.currentTarget);
-  const message = [
-    "Hello Svarupa Studio, I would like to enquire about a commissioned artwork.",
-    "",
-    `Name: ${data.get("name")}`,
-    `Subject: ${data.get("subject")}`,
-    `Approximate dimensions: ${data.get("dimensions")}`,
-    `Preferred medium: ${data.get("medium")}`,
-    `Budget: ${data.get("budget")}`,
-    data.get("notes") ? `Notes: ${data.get("notes")}` : "",
-    "",
-    "I understand that fulfilment is currently limited to Singapore.",
-  ].filter(Boolean).join("\n");
+// Commission enquiry: sent in the background to the /api/enquiry Worker route (worker/index.js), which checks
+// Cloudflare Turnstile and emails the artist. The artist's address and all keys live in Cloudflare, not here.
+const enquiryForm = document.querySelector("#enquire");
+const enquiryStatus = document.querySelector("[data-form-status]");
+const enquirySent = document.querySelector("[data-enquiry-sent]");
+const turnstileSlot = document.querySelector("[data-turnstile]");
+let turnstileWidget;
 
-  // Hand the message to the /whatsapp Worker route via the footer's WhatsApp form; the number never reaches the page.
-  const whatsappForm = document.querySelector("#whatsapp-form");
-  whatsappForm.elements.text.value = message;
-  whatsappForm.submit();
-  whatsappForm.elements.text.value = "";
+function loadTurnstile() {
+  if (!turnstileSlot) return;
+  fetch("./api/turnstile-config")
+    .then((response) => (response.ok ? response.json() : {}))
+    .then(({ siteKey }) => {
+      if (!siteKey) return;
+      window.onTurnstileLoad = () => {
+        turnstileWidget = window.turnstile.render(turnstileSlot, { sitekey: siteKey, action: "enquiry", appearance: "interaction-only" });
+      };
+      const script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad";
+      script.async = true;
+      script.defer = true;
+      document.head.append(script);
+    })
+    .catch(() => {});
+}
+
+function showEnquiryStatus(message) {
+  enquiryStatus.textContent = message;
+  enquiryStatus.hidden = !message;
+}
+
+const fieldMessages = {
+  name: "Please enter your name.",
+  phone: "Please enter your phone number with its country code, for example +65 8123 4567.",
+  email: "Please check your email address, or leave it blank.",
+  subject: "Please tell us the scene, figure or teaching you have in mind.",
+  dimensions: "Please choose approximate dimensions.",
+  medium: "Please choose a preferred medium.",
+  budget: "Please choose a budget range.",
+};
+
+// Highlights every invalid field and returns the first one, so the buyer sees what to fix.
+function firstInvalidField() {
+  let first;
+  enquiryForm.querySelectorAll("input, select, textarea").forEach((control) => {
+    if (control.closest(".field-trap") || !control.name || control.name.startsWith("cf-")) return;
+    const valid = control.checkValidity();
+    control.closest(".field")?.classList.toggle("is-invalid", !valid);
+    control.setAttribute("aria-invalid", String(!valid));
+    if (!valid && !first) first = control;
+  });
+  return first;
+}
+
+enquiryForm?.addEventListener("input", (event) => {
+  const field = event.target.closest(".field");
+  if (field?.classList.contains("is-invalid") && event.target.checkValidity()) {
+    field.classList.remove("is-invalid");
+    event.target.setAttribute("aria-invalid", "false");
+  }
 });
+
+enquiryForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const invalid = firstInvalidField();
+  if (invalid) {
+    showEnquiryStatus(fieldMessages[invalid.name] || "Please check the highlighted fields.");
+    invalid.focus();
+    return;
+  }
+
+  const token = turnstileWidget !== undefined ? window.turnstile.getResponse(turnstileWidget) : "";
+  if (!token) {
+    showEnquiryStatus("We're still confirming you're not a robot. Please wait a moment and send again.");
+    return;
+  }
+
+  const submitButton = enquiryForm.querySelector(".form-submit");
+  const buttonLabel = submitButton.textContent;
+  submitButton.disabled = true;
+  submitButton.textContent = "Sending…";
+  showEnquiryStatus("");
+
+  try {
+    const response = await fetch("./api/enquiry", { method: "POST", body: new FormData(enquiryForm) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.error || "Your enquiry couldn't be sent just now. Please try again in a few minutes.");
+
+    enquiryForm.hidden = true;
+    enquirySent.hidden = false;
+    enquirySent.focus();
+  } catch (error) {
+    showEnquiryStatus(error instanceof TypeError ? "We couldn't reach the server. Please check your connection and try again." : error.message);
+    if (turnstileWidget !== undefined) window.turnstile.reset(turnstileWidget);
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = buttonLabel;
+  }
+});
+
+loadTurnstile();
 
 document.querySelector("[data-year]").textContent = new Date().getFullYear();
