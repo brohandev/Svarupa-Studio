@@ -108,12 +108,100 @@ filterButtons.forEach((button) => {
   });
 });
 
+// "Subject of Enquiry" multi-select. Options are built from the art cards each time the page loads: every card whose
+// availability reads "Available" is listed by its title, followed by "Private commission". Adding, renaming or
+// marking a card unavailable in index.html updates the list automatically.
+const PRIVATE_COMMISSION = "Private commission";
+const subjectSelect = document.querySelector("[data-subject-select]");
+const subjectTrigger = subjectSelect?.querySelector(".multi-select-trigger");
+const subjectPanel = subjectSelect?.querySelector(".multi-select-panel");
+const subjectSummary = subjectSelect?.querySelector(".multi-select-summary");
+const commissionIdea = document.querySelector("[data-commission-idea]");
+const commissionInput = commissionIdea?.querySelector("input");
+
+function cardTitle(card) {
+  return card.querySelector("h3")?.textContent.trim() || "";
+}
+
+function isCardAvailable(card) {
+  return card.querySelector(".availability")?.textContent.trim().toLowerCase() === "available";
+}
+
+function subjectBoxes() {
+  return [...(subjectPanel?.querySelectorAll('input[name="subject"]') || [])];
+}
+
+function buildSubjectOptions() {
+  const titles = [...new Set([...artworkCards].filter(isCardAvailable).map(cardTitle).filter(Boolean))];
+  [...titles, PRIVATE_COMMISSION].forEach((title) => {
+    const option = document.createElement("label");
+    option.className = "multi-select-option";
+    if (title === PRIVATE_COMMISSION) option.classList.add("is-commission");
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.name = "subject";
+    box.value = title;
+    const text = document.createElement("span");
+    text.textContent = title;
+    option.append(box, text);
+    subjectPanel.append(option);
+  });
+}
+
+// Refreshes the closed field's summary, the "at least one" rule, and the commission-idea field.
+function updateSubject() {
+  const boxes = subjectBoxes();
+  const chosen = boxes.filter((box) => box.checked).map((box) => box.value);
+  subjectSummary.textContent = chosen.length === 0 ? "Select artworks"
+    : chosen.length === 1 ? chosen[0] : `${chosen[0]}, +${chosen.length - 1} more`;
+  subjectSummary.classList.toggle("is-placeholder", chosen.length === 0);
+  boxes[0]?.setCustomValidity(chosen.length ? "" : "Choose at least one artwork, or Private commission.");
+
+  const wantsCommission = chosen.includes(PRIVATE_COMMISSION);
+  commissionIdea.hidden = !wantsCommission;
+  commissionInput.disabled = !wantsCommission;
+  commissionInput.required = wantsCommission;
+}
+
+function setSubjectOpen(open, { focusOption = false } = {}) {
+  subjectPanel.hidden = !open;
+  subjectTrigger.setAttribute("aria-expanded", String(open));
+  if (open && focusOption) (subjectBoxes().find((box) => box.checked) || subjectBoxes()[0])?.focus();
+}
+
+if (subjectSelect) {
+  buildSubjectOptions();
+  updateSubject();
+  subjectTrigger.addEventListener("click", () => setSubjectOpen(subjectPanel.hidden, { focusOption: true }));
+  subjectPanel.addEventListener("input", updateSubject);
+  subjectSelect.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !subjectPanel.hidden) {
+      event.preventDefault();
+      setSubjectOpen(false);
+      subjectTrigger.focus();
+    }
+  });
+  subjectSelect.addEventListener("focusout", (event) => {
+    if (event.relatedTarget && !subjectSelect.contains(event.relatedTarget)) setSubjectOpen(false);
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!subjectPanel.hidden && !subjectSelect.contains(event.target)) setSubjectOpen(false);
+  });
+}
+
+// Each card's Enquire button ticks that artwork (or "Private commission" for works that aren't available) and
+// scrolls to the form. Ticks add up, so a buyer can gather several works before writing.
 document.querySelectorAll(".art-enquire").forEach((button) => {
   button.addEventListener("click", () => {
-    const subject = document.querySelector("#subject");
-    subject.value = button.dataset.artwork || "";
+    const card = button.closest(".art-card");
+    const value = card && isCardAvailable(card) ? cardTitle(card) : PRIVATE_COMMISSION;
+    const box = subjectBoxes().find((option) => option.value === value);
+    if (box) {
+      box.checked = true;
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    }
     scrollToTarget(document.querySelector("#enquire"));
-    window.setTimeout(() => subject.focus(), 500);
+    window.setTimeout(() => (value === PRIVATE_COMMISSION ? commissionInput : subjectTrigger)?.focus(), 500);
   });
 });
 
@@ -152,17 +240,21 @@ const fieldMessages = {
   name: "Please enter your name.",
   phone: "Please enter your phone number with its country code, for example +65 8123 4567.",
   email: "Please check your email address, or leave it blank.",
-  subject: "Please tell us the scene, figure or teaching you have in mind.",
+  subject: "Please choose at least one artwork, or Private commission.",
+  commission_subject: "Please tell us the scene, figure or teaching you would like painted.",
   dimensions: "Please choose approximate dimensions.",
   medium: "Please choose a preferred medium.",
   budget: "Please choose a budget range.",
 };
 
 // Highlights every invalid field and returns the first one, so the buyer sees what to fix.
+// The artwork checkboxes count as one field; its "at least one" rule is carried by the first checkbox.
 function firstInvalidField() {
   let first;
+  updateSubject();
   enquiryForm.querySelectorAll("input, select, textarea").forEach((control) => {
     if (control.closest(".field-trap") || !control.name || control.name.startsWith("cf-")) return;
+    if (control.type === "checkbox" && control !== subjectBoxes()[0]) return;
     const valid = control.checkValidity();
     control.closest(".field")?.classList.toggle("is-invalid", !valid);
     control.setAttribute("aria-invalid", String(!valid));
@@ -184,7 +276,7 @@ enquiryForm?.addEventListener("submit", async (event) => {
   const invalid = firstInvalidField();
   if (invalid) {
     showEnquiryStatus(fieldMessages[invalid.name] || "Please check the highlighted fields.");
-    invalid.focus();
+    (invalid.type === "checkbox" ? subjectTrigger : invalid).focus();
     return;
   }
 

@@ -30,7 +30,6 @@
       <nav class="site-nav" id="site-nav" aria-label="Primary navigation">
         <a href="#collection">Artworks</a>
         <a href="#artist">The artist</a>
-        <a href="#commissions">Commissions</a>
         <a class="nav-enquire" href="#enquire">Enquire</a>
       </nav>
     </header>
@@ -89,7 +88,7 @@
               <p>Acrylic &amp; gold pigment on canvas</p>
               <p>122 × 152 cm · 2026</p>
               <span class="availability">Available</span>
-              <button class="art-enquire" type="button" data-artwork="Krishna’s Counsel">Enquire</button>
+              <button class="art-enquire" type="button">Enquire</button>
             </div>
           </article>
 
@@ -100,7 +99,7 @@
               <p>Watercolour &amp; mineral pigment on paper</p>
               <p>76 × 56 cm · 2026</p>
               <span class="availability">Available</span>
-              <button class="art-enquire" type="button" data-artwork="In the Ashoka Grove">Enquire</button>
+              <button class="art-enquire" type="button">Enquire</button>
             </div>
           </article>
 
@@ -111,7 +110,7 @@
               <p>Sand, acrylic &amp; charcoal on canvas</p>
               <p>100 × 100 cm · 2025</p>
               <span class="availability">Available</span>
-              <button class="art-enquire" type="button" data-artwork="Abhimanyu’s Resolve">Enquire</button>
+              <button class="art-enquire" type="button">Enquire</button>
             </div>
           </article>
 
@@ -122,7 +121,7 @@
               <p>Acrylic, sand &amp; ink on canvas</p>
               <p>137 × 91 cm · 2025</p>
               <span class="availability">Available</span>
-              <button class="art-enquire" type="button" data-artwork="The Bridge to Lanka">Enquire</button>
+              <button class="art-enquire" type="button">Enquire</button>
             </div>
           </article>
 
@@ -133,7 +132,7 @@
               <p>Watercolour, ink &amp; silver leaf on paper</p>
               <p>91 × 91 cm · 2025</p>
               <span class="availability">Private commission</span>
-              <button class="art-enquire" type="button" data-artwork="A similar private commission">Enquire</button>
+              <button class="art-enquire" type="button">Enquire</button>
             </div>
           </article>
 
@@ -144,7 +143,7 @@
               <p>Acrylic &amp; earth pigment on canvas</p>
               <p>152 × 122 cm · 2024</p>
               <span class="availability">Private commission</span>
-              <button class="art-enquire" type="button" data-artwork="A similar private commission">Enquire</button>
+              <button class="art-enquire" type="button">Enquire</button>
             </div>
           </article>
         </div>
@@ -211,9 +210,22 @@
             <label for="company">Company</label>
             <input id="company" name="company" type="text" tabindex="-1" autocomplete="off" />
           </div>
-          <div class="field field-full">
-            <label for="subject">Subject</label>
-            <input id="subject" name="subject" type="text" required maxlength="200" placeholder="A scene, figure or teaching" />
+          <!--
+            Multi-select of artworks. script.js builds the options from every art card in the collection whose
+            availability reads "Available", then adds "Private commission" last. Add a card and it appears here.
+          -->
+          <div class="field field-full multi-select" data-subject-select>
+            <label id="subject-label" for="subject-trigger">Subject of Enquiry</label>
+            <button class="multi-select-trigger" id="subject-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="subject-options" aria-labelledby="subject-label subject-summary">
+              <span class="multi-select-summary is-placeholder" id="subject-summary">Select artworks</span>
+            </button>
+            <fieldset class="multi-select-panel" id="subject-options" hidden>
+              <legend class="sr-only">Artworks to enquire about (choose one or more)</legend>
+            </fieldset>
+          </div>
+          <div class="field field-full" data-commission-idea hidden>
+            <label for="commission-subject">What would you like painted?</label>
+            <input id="commission-subject" name="commission_subject" type="text" maxlength="200" disabled placeholder="A scene, figure or teaching" />
           </div>
           <div class="field">
             <label for="dimensions">Approximate dimensions</label>
@@ -222,8 +234,8 @@
               <option>Up to 60 × 60 cm</option>
               <option>Up to 90 × 90 cm</option>
               <option>Up to 120 × 150 cm</option>
-              <option>Large format / site-specific</option>
-              <option>Not sure yet</option>
+              <option>Large format/site-specific (consultation is necessary)</option>
+              <option>Not sure yet (consultation is necessary)</option>
             </select>
           </div>
           <div class="field">

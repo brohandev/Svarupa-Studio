@@ -250,11 +250,17 @@ sequenceDiagram
     Note over B: Form replaced by thank-you panel, or inline error with fields kept
 ```
 
-**Form fields:** name, phone (required, international format with `+` country code), email (optional), subject, approximate dimensions, preferred medium, budget range (SGD) and notes (optional). Artwork "Enquire" buttons pre-fill the subject.
+**Form fields:** name, phone (required, international format with `+` country code), email (optional), **subject of enquiry**, approximate dimensions, preferred medium, budget range (SGD) and notes (optional).
+
+**Subject of enquiry** is a checkbox dropdown that `script.js` builds when the page loads:
+- **Options:** every art card whose `.availability` text is exactly `Available` is listed by its `<h3>` title, with **Private commission** always added last. Adding a card, renaming one, or changing its availability (e.g. to `Sold`) updates the list automatically, with nothing hardcoded.
+- **Several picks:** buyers may tick several artworks. Each card's **Enquire** button ticks that artwork, or *Private commission* for works that aren't available, and the ticks add up.
+- **Commission idea:** ticking *Private commission* reveals a required "What would you like painted?" field (`commission_subject`).
 
 **The email the artist receives:**
 - **From:** "Svarupa Studio website" `<SENDER_EMAIL>`
-- **Subject:** `Commission enquiry: <subject> (<buyer name>)`
+- **Subject:** `Artwork enquiry: <first artwork> +N more (<buyer name>)`, with `& private commission` appended when that is also ticked, or `Commission enquiry: <commission idea> (<buyer name>)` when only a private commission is requested
+- **Enquiring about:** a bulleted list of every ticked artwork, with the commission idea next to *Private commission*
 - **Body:** plain text, base64-encoded UTF-8 so accents, symbols and Devanagari survive. It lists every field, the time sent in Singapore time, and how to reply.
 - **Replying:** if the buyer gave an email, it is set as **Reply-To**, so the artist can simply press Reply.
 
@@ -402,7 +408,7 @@ Then submit a real enquiry on the live site and confirm:
 |---|---|
 | **Change the artist's email** | Add and verify the new address in **Email Routing → Destination addresses**, then edit the `ARTIST_EMAIL` secret and deploy. No code change |
 | **Rotate Turnstile keys** | **Turnstile** → widget → **Rotate secret key**, then update `TURNSTILE_SECRET_KEY` (and the site key if it changed) |
-| **Add or replace an artwork** | Put the image in `assets/artworks/` (lowercase, hyphenated filename). Copy an existing `<article class="art-card …">` in `index.html`, set the `src`, `alt`, title, details, `data-category` (`mahabharata`, `ramayana` or `commissioned`) and `data-artwork`. Shape classes: `art-card-wide` (4:3), `art-card-tall` (4:5) or `art-card-square` |
+| **Add or replace an artwork** | Put the image in `assets/artworks/` (lowercase, hyphenated filename). Copy an existing `<article class="art-card …">` in `index.html`, set the `src`, `alt`, title, details, `data-category` (`mahabharata`, `ramayana` or `commissioned`) and the `.availability` text (`Available` adds it to the enquiry dropdown automatically; anything else, e.g. `Private commission` or `Sold`, leaves it out). Shape classes: `art-card-wide` (4:3), `art-card-tall` (4:5) or `art-card-square` |
 | **Update the biography** | Edit the paragraphs in the `#artist` section of `index.html` (see the editing note there) |
 | **Change styles** | Edit `styles.css`, then bump `styles.css?v=N` in `index.html` |
 | **Add a public file** | Just add it; everything not in `.assetsignore` is published |

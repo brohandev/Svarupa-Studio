@@ -16,7 +16,10 @@
 
 import { EmailMessage } from "cloudflare:email";
 
-const LIMITS = { name: 100, email: 254, phone: 30, subject: 200, dimensions: 60, medium: 60, budget: 60, notes: 2000 };
+const LIMITS = { name: 100, email: 254, phone: 30, commissionSubject: 200, dimensions: 60, medium: 60, budget: 60, notes: 2000 };
+const PRIVATE_COMMISSION = "Private commission";
+const MAX_SUBJECTS = 50;
+const MAX_SUBJECT_LENGTH = 200;
 const EMAIL_PATTERN = /^[^\s@<>()",;]+@[^\s@<>()",;]+\.[^\s@<>()",;]+$/;
 
 function json(body, status = 200) {
@@ -40,16 +43,29 @@ function validateEnquiry(form) {
     name: singleLine(field(form, "name")),
     email: singleLine(field(form, "email")),
     phone: singleLine(field(form, "phone")),
-    subject: singleLine(field(form, "subject")),
+    // "subject" is the artwork multi-select, so it can arrive several times; empty and duplicate picks are dropped.
+    subjects: [...new Set(form.getAll("subject").map((value) => singleLine(String(value))).filter(Boolean))],
+    commissionSubject: singleLine(field(form, "commission_subject")),
     dimensions: singleLine(field(form, "dimensions")),
     medium: singleLine(field(form, "medium")),
     budget: singleLine(field(form, "budget")),
     notes: field(form, "notes").replace(/\r\n?/g, "\n"),
   };
 
-  for (const required of ["name", "phone", "subject", "dimensions", "medium", "budget"]) {
+  for (const required of ["name", "phone", "dimensions", "medium", "budget"]) {
     if (!enquiry[required]) return { error: "Please fill in every required field." };
   }
+  if (enquiry.subjects.length === 0) {
+    return { error: "Please choose at least one artwork, or Private commission." };
+  }
+  if (enquiry.subjects.length > MAX_SUBJECTS || enquiry.subjects.some((subject) => subject.length > MAX_SUBJECT_LENGTH)) {
+    return { error: "One of the fields is too long. Please shorten it and try again." };
+  }
+  const wantsCommission = enquiry.subjects.includes(PRIVATE_COMMISSION);
+  if (wantsCommission && !enquiry.commissionSubject) {
+    return { error: "Please tell us the scene, figure or teaching you would like painted." };
+  }
+  if (!wantsCommission) enquiry.commissionSubject = "";
   for (const [key, max] of Object.entries(LIMITS)) {
     if (enquiry[key].length > max) return { error: "One of the fields is too long. Please shorten it and try again." };
   }
@@ -107,16 +123,29 @@ function buildEmail({ from, to, replyTo, subject, text }) {
   return `${headers.join("\r\n")}\r\n\r\n${body}`;
 }
 
+// e.g. "Artwork enquiry: Krishna's Counsel +1 more & private commission" or "Commission enquiry: Ganga at dawn".
+function enquirySubjectLine(enquiry) {
+  const artworks = enquiry.subjects.filter((subject) => subject !== PRIVATE_COMMISSION);
+  if (artworks.length === 0) return `Commission enquiry: ${enquiry.commissionSubject} (${enquiry.name})`;
+  const more = artworks.length > 1 ? ` +${artworks.length - 1} more` : "";
+  const commission = enquiry.commissionSubject ? " & private commission" : "";
+  return `Artwork enquiry: ${artworks[0]}${more}${commission} (${enquiry.name})`;
+}
+
 function enquiryText(enquiry) {
   const sentAt = new Date().toLocaleString("en-SG", { timeZone: "Asia/Singapore", dateStyle: "full", timeStyle: "short" });
+  const interests = enquiry.subjects.map((subject) =>
+    subject === PRIVATE_COMMISSION ? `  - Private commission: ${enquiry.commissionSubject}` : `  - ${subject}`);
   return [
-    "New commission enquiry from the Svarupa Studio website.",
+    "New enquiry from the Svarupa Studio website.",
     "",
     `Name: ${enquiry.name}`,
     `Phone: ${enquiry.phone}`,
     `Email: ${enquiry.email || "Not provided"}`,
     "",
-    `Subject: ${enquiry.subject}`,
+    "Enquiring about:",
+    ...interests,
+    "",
     `Approximate dimensions: ${enquiry.dimensions}`,
     `Preferred medium: ${enquiry.medium}`,
     `Budget: ${enquiry.budget}`,
@@ -161,7 +190,7 @@ async function handleEnquiry(request, env) {
     from: env.SENDER_EMAIL,
     to: env.ARTIST_EMAIL,
     replyTo: enquiry.email,
-    subject: `Commission enquiry: ${enquiry.subject} (${enquiry.name})`,
+    subject: enquirySubjectLine(enquiry),
     text: enquiryText(enquiry),
   });
 

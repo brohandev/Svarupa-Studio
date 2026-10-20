@@ -228,6 +228,22 @@ main > section:nth-child(4) { z-index: 4; }
 .button-dark:hover { background: var(--burgundy); }
 .form-note { grid-column: 1 / -1; margin: -14px 0 0; text-align: center; font-size: .75rem; color: #72695f; }
 .field-hint { margin: 6px 0 0; font-size: .72rem; color: #72695f; }
+
+/* Artwork multi-select: a button styled like the other fields, opening a panel of checkboxes built by script.js. */
+.multi-select { position: relative; }
+.multi-select-trigger { width: 100%; min-height: 48px; padding: 9px 28px 9px 0; display: flex; align-items: center; border: 0; border-bottom: 1px solid #aaa196; border-radius: 0; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; position: relative; }
+.multi-select-trigger::after { content: ""; position: absolute; right: 6px; top: 50%; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-70%) rotate(45deg); transition: transform 180ms ease; }
+.multi-select-trigger[aria-expanded="true"]::after { transform: translateY(-30%) rotate(-135deg); }
+.multi-select-trigger:focus-visible, .multi-select-trigger[aria-expanded="true"] { outline: none; border-bottom-color: var(--copper); box-shadow: 0 1px 0 var(--copper); }
+.multi-select-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.multi-select-summary.is-placeholder { color: #8a8278; }
+.field.is-invalid .multi-select-trigger { border-bottom-color: #a3392f; box-shadow: 0 1px 0 #a3392f; }
+.multi-select-panel { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; margin: 6px 0 0; padding: 6px 0; max-height: 280px; overflow-y: auto; border: 1px solid #d8d0c3; background: var(--paper); box-shadow: 0 14px 34px rgba(23, 23, 21, .16); }
+.field .multi-select-option { display: flex; align-items: center; gap: 12px; margin: 0; padding: 10px 16px; font-size: .95rem; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink); cursor: pointer; }
+.field .multi-select-option:hover { background: rgba(196, 122, 79, .1); }
+.field.multi-select .multi-select-option input { flex: none; width: 17px; min-height: 0; height: 17px; margin: 0; padding: 0; border: 0; accent-color: #8b4d35; box-shadow: none; cursor: pointer; }
+.field.multi-select .multi-select-option input:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
+.field .multi-select-option.is-commission { margin-top: 6px; padding-top: 14px; border-top: 1px solid #e3dccf; font-style: italic; }
 .field.is-invalid input, .field.is-invalid select { border-bottom-color: #a3392f; box-shadow: 0 1px 0 #a3392f; }
 /* Honeypot: kept in the form for bots but moved off-screen and out of reach for people and screen readers. */
 .field-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
