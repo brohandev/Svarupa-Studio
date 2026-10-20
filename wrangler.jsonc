@@ -7,7 +7,9 @@
   "assets": {
     // The site is served straight from the repository root; .assetsignore keeps non-site files from being published.
     "directory": ".",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // The home page goes through the Worker first so it can make the link-preview tags absolute (worker/index.js).
+    "run_worker_first": ["/", "/index.html"]
   },
   // Sends commission enquiries through Cloudflare Email Routing. No destination is fixed here so the artist's
   // address stays out of the repository; it comes from the ARTIST_EMAIL secret and must be a verified destination.

@@ -1,8 +1,9 @@
 // Cloudflare Worker for Svarupa Studio.
 //
-// The site itself is served as static assets (see wrangler.jsonc). This script only runs for requests that don't
-// match a static file, which is how the /api/ routes reach it:
+// The site itself is served as static assets (see wrangler.jsonc). This script runs for requests that don't match a
+// static file, which is how the /api/ routes reach it, and for the home page, which wrangler.jsonc routes here first:
 //
+//   GET  /  (and /index.html)   -> the page, with its link-preview tags made absolute (see absolutePreviewUrls).
 //   GET  /api/turnstile-config  -> the public Turnstile site key, so the page can render the human check.
 //   POST /api/enquiry           -> verifies Turnstile, validates the commission form, and emails it to the artist
 //                                  through Cloudflare Email Routing.
@@ -209,11 +210,31 @@ function handleTurnstileConfig(env) {
   return json({ siteKey: env.TURNSTILE_SITE_KEY || null });
 }
 
+// Link-preview crawlers (WhatsApp, Telegram, Facebook…) need absolute URLs in og:url and the preview-image tags, but
+// index.html keeps them relative so no domain is hardcoded in the repository. This fills in the address of whichever
+// domain served the page (the custom domain or workers.dev).
+const PREVIEW_URL_TAGS = 'meta[property="og:url"], meta[property="og:image"], meta[name="twitter:image"]';
+
+async function absolutePreviewUrls(request, env) {
+  const response = await env.ASSETS.fetch(request);
+  if (!(response.headers.get("Content-Type") || "").includes("text/html")) return response;
+  const base = new URL("/", request.url);
+  return new HTMLRewriter()
+    .on(PREVIEW_URL_TAGS, {
+      element(tag) {
+        const value = tag.getAttribute("content");
+        if (value) tag.setAttribute("content", new URL(value, base).href);
+      },
+    })
+    .transform(response);
+}
+
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
     if (pathname === "/api/enquiry") return handleEnquiry(request, env);
     if (pathname === "/api/turnstile-config") return handleTurnstileConfig(env);
+    if (pathname === "/" || pathname === "/index.html") return absolutePreviewUrls(request, env);
     return env.ASSETS.fetch(request);
   },
 };

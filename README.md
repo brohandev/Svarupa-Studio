@@ -157,6 +157,7 @@ Svarupa-Studio/
 ├── assets/
 │   ├── favicon.svg         स्व favicon (glyph outlines from Noto Serif Devanagari, SIL OFL)
 │   ├── artworks/           Painting images used by the hero and collection
+│   ├── social/             preview.jpg: the 1200×630 link-preview image for WhatsApp, Telegram, etc.
 │   └── fonts/              Self-hosted fonts (Samarkan, Fraunces) + Fraunces licence
 ├── worker/
 │   └── index.js            Cloudflare Worker: Turnstile config + enquiry → email   (not published)
@@ -210,6 +211,7 @@ Plain, dependency-free **HTML5, CSS3 and vanilla JavaScript (ES2020+)**. There i
 
 | Route | Method | Behaviour |
 |---|---|---|
+| `/` and `/index.html` | GET | Serves the page, rewriting the link-preview tags (`og:url`, `og:image`, `twitter:image`) from relative to absolute URLs for whichever domain served it. `wrangler.jsonc` routes these paths to the Worker first via `assets.run_worker_first` |
 | `/api/turnstile-config` | GET | Returns `{ "siteKey": "…" }` (the **public** Turnstile site key) so the page can render the widget |
 | `/api/enquiry` | POST | Validates and emails a commission enquiry (see 2.5). Any other method → `405` |
 | anything else | any | Passed to the static assets (`env.ASSETS.fetch`). In practice static files are served before the Worker is even invoked |
@@ -420,6 +422,7 @@ Then submit a real enquiry on the live site and confirm:
 | **Change styles** | Edit `styles.css`, then bump `styles.css?v=N` in `index.html` |
 | **Add a public file** | Just add it; everything not in `.assetsignore` is published |
 | **Add a private file** | Add it **and** list it in `.assetsignore` |
+| **Change the link preview** | Edit the `og:` / `twitter:` tags in `index.html`'s `<head>`, or replace `assets/social/preview.jpg` (keep it 1200×630 and under ~300 KB, or WhatsApp drops it). Apps cache previews: re-check with Facebook's [Sharing Debugger](https://developers.facebook.com/tools/debug/) (refreshes WhatsApp too) and Telegram's [@WebpageBot](https://t.me/WebpageBot) |
 | **Roll back a bad deploy** | Worker → **Deployments** → choose a previous version → **Rollback**, or revert the commit and push |
 | **View Worker errors** | Worker → **Logs** (enable *Workers Logs* if prompted). Failed sends are logged as `Enquiry email failed:` |
 
