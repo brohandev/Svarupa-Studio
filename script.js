@@ -236,9 +236,78 @@ function showEnquiryStatus(message) {
   enquiryStatus.hidden = !message;
 }
 
+// Phone number: a country calling-code dropdown (from countries.js; Singapore pinned and pre-selected) plus the local
+// number, joined into one international number when the form is sent.
+const phoneCountry = document.querySelector("[data-phone-country]");
+const phoneCountryDisplay = document.querySelector("[data-phone-country-display]");
+const phoneNumber = document.querySelector("#phone");
+const DEFAULT_COUNTRY = "SG";
+// Countries whose numbers keep their leading 0 after the country code; elsewhere a leading 0 is the domestic
+// trunk prefix (e.g. UK 07946… becomes +44 7946…).
+const KEEPS_LEADING_ZERO = new Set(["IT", "SM", "VA", "CI"]);
+
+function flagFor(iso) {
+  return String.fromCodePoint(...[...iso].map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65));
+}
+
+function countryOption(iso, name, dial) {
+  const option = new Option(`${flagFor(iso)} ${name} (+${dial})`, iso);
+  option.dataset.dial = dial;
+  option.dataset.name = name;
+  return option;
+}
+
+function buildPhoneCountries() {
+  const countries = [...(window.SVARUPA_COUNTRIES || [])].sort((a, b) => a[1].localeCompare(b[1], "en"));
+  const pinned = countries.find(([iso]) => iso === DEFAULT_COUNTRY);
+  if (!pinned) return;
+  const divider = new Option("──────────", "");
+  divider.disabled = true;
+  phoneCountry.replaceChildren(countryOption(...pinned), divider, ...countries.map((country) => countryOption(...country)));
+  phoneCountry.selectedIndex = 0;
+}
+
+function selectedCountry() {
+  const option = phoneCountry.selectedOptions[0];
+  return { iso: option?.value || DEFAULT_COUNTRY, dial: option?.dataset.dial || "65", name: option?.dataset.name || "Singapore" };
+}
+
+function updatePhoneCountryDisplay() {
+  const { iso, dial } = selectedCountry();
+  phoneCountryDisplay.textContent = `${flagFor(iso)} +${dial}`;
+}
+
+// Joins the calling code and local number into "+<code> <number>". A number typed with its own "+" or "00" prefix is
+// taken as already international.
+function internationalPhone() {
+  const typed = phoneNumber.value.trim().replace(/\s+/g, " ");
+  if (typed.startsWith("+")) return typed;
+  if (typed.startsWith("00")) return `+${typed.slice(2).trim()}`;
+  const { iso, dial } = selectedCountry();
+  const local = KEEPS_LEADING_ZERO.has(iso) ? typed : typed.replace(/^0+(?=\d)/, "");
+  return `+${dial} ${local}`;
+}
+
+function updatePhoneValidity() {
+  const typedDigits = phoneNumber.value.replace(/\D/g, "").length;
+  const fullDigits = internationalPhone().replace(/\D/g, "").length;
+  const plausible = typedDigits >= 4 && fullDigits >= 8 && fullDigits <= 15;
+  phoneNumber.setCustomValidity(!phoneNumber.value.trim() || plausible ? "" : "Please check the phone number.");
+}
+
+if (phoneCountry && phoneNumber) {
+  buildPhoneCountries();
+  updatePhoneCountryDisplay();
+  phoneCountry.addEventListener("change", () => {
+    updatePhoneCountryDisplay();
+    updatePhoneValidity();
+  });
+  phoneNumber.addEventListener("input", updatePhoneValidity);
+}
+
 const fieldMessages = {
   name: "Please enter your name.",
-  phone: "Please enter your phone number with its country code, for example +65 8123 4567.",
+  phone_national: "Please enter a valid phone number for the country you've chosen.",
   email: "Please check your email address, or leave it blank.",
   subject: "Please choose at least one artwork, or Private commission.",
   commission_subject: "Please tell us the scene, figure or teaching you would like painted.",
@@ -252,6 +321,7 @@ const fieldMessages = {
 function firstInvalidField() {
   let first;
   updateSubject();
+  updatePhoneValidity();
   enquiryForm.querySelectorAll("input, select, textarea").forEach((control) => {
     if (control.closest(".field-trap") || !control.name || control.name.startsWith("cf-")) return;
     if (control.type === "checkbox" && control !== subjectBoxes()[0]) return;
@@ -293,7 +363,11 @@ enquiryForm?.addEventListener("submit", async (event) => {
   showEnquiryStatus("");
 
   try {
-    const response = await fetch("./api/enquiry", { method: "POST", body: new FormData(enquiryForm) });
+    const payload = new FormData(enquiryForm);
+    payload.set("phone", internationalPhone());
+    payload.set("phone_country", selectedCountry().name);
+    payload.delete("phone_national");
+    const response = await fetch("./api/enquiry", { method: "POST", body: payload });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) throw new Error(result.error || "Your enquiry couldn't be sent just now. Please try again in a few minutes.");
 

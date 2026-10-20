@@ -13,6 +13,7 @@
     <link rel="preload" href="./assets/fonts/Samarkan.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="preload" href="./assets/fonts/Fraunces-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./styles.css?v=3" />
+    <script src="./countries.js" defer></script>
     <script src="./script.js" defer></script>
   </head>
   <body>
@@ -196,10 +197,22 @@
             <label for="name">Your name</label>
             <input id="name" name="name" type="text" autocomplete="name" required maxlength="100" placeholder="Name" />
           </div>
+          <!--
+            Phone = country calling code (dropdown, filled from countries.js by script.js; Singapore pinned and
+            pre-selected) + the local number. script.js joins them into one international number when sending.
+          -->
           <div class="field">
             <label for="phone">Phone number</label>
-            <input id="phone" name="phone" type="tel" autocomplete="tel" required maxlength="30" pattern="\+[0-9][0-9\s\-\(\)\.]{6,28}" placeholder="+65 8123 4567" aria-describedby="phone-hint" />
-            <p class="field-hint" id="phone-hint">Include your country code, e.g. +65.</p>
+            <div class="phone-input">
+              <div class="phone-country">
+                <span class="phone-country-display" aria-hidden="true" data-phone-country-display>🇸🇬 +65</span>
+                <select id="phone-country" name="phone_country" aria-label="Country calling code" required data-phone-country>
+                  <option value="SG" data-dial="65" selected>🇸🇬 Singapore (+65)</option>
+                </select>
+              </div>
+              <input id="phone" name="phone_national" type="tel" autocomplete="tel-national" inputmode="tel" required maxlength="25" pattern="[0-9\s\-\(\)\.\+]{4,25}" placeholder="8123 4567" aria-describedby="phone-hint" />
+            </div>
+            <p class="field-hint" id="phone-hint">Choose your country, then enter your number.</p>
           </div>
           <div class="field">
             <label for="email">Email <span>(optional)</span></label>

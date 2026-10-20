@@ -229,6 +229,15 @@ main > section:nth-child(4) { z-index: 4; }
 .form-note { grid-column: 1 / -1; margin: -14px 0 0; text-align: center; font-size: .75rem; color: #72695f; }
 .field-hint { margin: 6px 0 0; font-size: .72rem; color: #72695f; }
 
+/* Phone: a native country-code <select> laid invisibly over a compact "flag +code" label, beside the number box.
+   Tapping the label opens the full country list; the closed field stays short. */
+.phone-input { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: end; }
+.phone-country { position: relative; }
+.phone-country-display { min-height: 48px; padding: 9px 22px 9px 0; display: flex; align-items: center; border-bottom: 1px solid #aaa196; white-space: nowrap; color: var(--ink); position: relative; }
+.phone-country-display::after { content: ""; position: absolute; right: 4px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-70%) rotate(45deg); }
+.field .phone-country select { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+.phone-country:focus-within .phone-country-display { border-bottom-color: var(--copper); box-shadow: 0 1px 0 var(--copper); }
+
 /* Artwork multi-select: a button styled like the other fields, opening a panel of checkboxes built by script.js. */
 .multi-select { position: relative; }
 .multi-select-trigger { width: 100%; min-height: 48px; padding: 9px 28px 9px 0; display: flex; align-items: center; border: 0; border-bottom: 1px solid #aaa196; border-radius: 0; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; position: relative; }

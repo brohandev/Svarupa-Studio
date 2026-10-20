@@ -152,6 +152,7 @@ Svarupa-Studio/
 ├── index.html              Single-page site: header, hero, collection, artist, commissions form, footer
 ├── styles.css              All styling, animations and responsive layout
 ├── script.js               Front-end behaviour (scroll effects, filters, reveals, enquiry form)
+├── countries.js            Country calling codes for the enquiry form's phone field
 ├── robots.txt              Asks crawlers to stay out of /api/
 ├── assets/
 │   ├── favicon.svg         स्व favicon (glyph outlines from Noto Serif Devanagari, SIL OFL)
@@ -250,7 +251,13 @@ sequenceDiagram
     Note over B: Form replaced by thank-you panel, or inline error with fields kept
 ```
 
-**Form fields:** name, phone (required, international format with `+` country code), email (optional), **subject of enquiry**, approximate dimensions, preferred medium, budget range (SGD) and notes (optional).
+**Form fields:** name, phone (required: a country-code dropdown plus the local number), email (optional), **subject of enquiry**, approximate dimensions, preferred medium, budget range (SGD) and notes (optional).
+
+**Phone number** is a native country-code dropdown plus a free-text number box:
+- **Country list:** built from [`countries.js`](countries.js), which lists all ~245 countries and territories as `[ISO code, name, calling code]`. Singapore is pre-selected and pinned at the top, above an alphabetical list.
+- **Labels:** each option shows a flag (generated from the ISO code), the name and the code. Windows has no flag emoji, so Windows browsers show the two-letter code instead.
+- **Joining the number:** on submit, `script.js` combines the two into one international number, e.g. `+44 7946 000000`. It drops a leading domestic `0` (except for Italy, San Marino, the Vatican and Côte d'Ivoire, whose numbers keep it). A number typed with its own `+` or `00` prefix is used as typed.
+- **In the email:** the artist sees the number with the country name, e.g. `Phone: +44 7946 000000 (United Kingdom)`.
 
 **Subject of enquiry** is a checkbox dropdown that `script.js` builds when the page loads:
 - **Options:** every art card whose `.availability` text is exactly `Available` is listed by its `<h3>` title, with **Private commission** always added last. Adding a card, renaming one, or changing its availability (e.g. to `Sold`) updates the list automatically, with nothing hardcoded.

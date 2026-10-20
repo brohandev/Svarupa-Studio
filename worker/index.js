@@ -16,7 +16,7 @@
 
 import { EmailMessage } from "cloudflare:email";
 
-const LIMITS = { name: 100, email: 254, phone: 30, commissionSubject: 200, dimensions: 60, medium: 60, budget: 60, notes: 2000 };
+const LIMITS = { name: 100, email: 254, phone: 40, phoneCountry: 60, commissionSubject: 200, dimensions: 60, medium: 60, budget: 60, notes: 2000 };
 const PRIVATE_COMMISSION = "Private commission";
 const MAX_SUBJECTS = 50;
 const MAX_SUBJECT_LENGTH = 200;
@@ -42,7 +42,9 @@ function validateEnquiry(form) {
   const enquiry = {
     name: singleLine(field(form, "name")),
     email: singleLine(field(form, "email")),
+    // The page joins the chosen country code and local number into one international number before sending.
     phone: singleLine(field(form, "phone")),
+    phoneCountry: singleLine(field(form, "phone_country")),
     // "subject" is the artwork multi-select, so it can arrive several times; empty and duplicate picks are dropped.
     subjects: [...new Set(form.getAll("subject").map((value) => singleLine(String(value))).filter(Boolean))],
     commissionSubject: singleLine(field(form, "commission_subject")),
@@ -72,7 +74,7 @@ function validateEnquiry(form) {
 
   const phoneDigits = enquiry.phone.replace(/\D/g, "");
   if (!/^\+[\d\s\-().]+$/.test(enquiry.phone) || phoneDigits.length < 8 || phoneDigits.length > 15) {
-    return { error: "Please enter your phone number with its country code, for example +65 8123 4567." };
+    return { error: "Please check your phone number and the country chosen for it." };
   }
   if (enquiry.email && !EMAIL_PATTERN.test(enquiry.email)) {
     return { error: "Please check your email address, or leave it blank." };
@@ -140,7 +142,7 @@ function enquiryText(enquiry) {
     "New enquiry from the Svarupa Studio website.",
     "",
     `Name: ${enquiry.name}`,
-    `Phone: ${enquiry.phone}`,
+    `Phone: ${enquiry.phone}${enquiry.phoneCountry ? ` (${enquiry.phoneCountry})` : ""}`,
     `Email: ${enquiry.email || "Not provided"}`,
     "",
     "Enquiring about:",
